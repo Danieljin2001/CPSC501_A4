@@ -262,7 +262,7 @@ void writeTone(double y[], int K){
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
    double largestNum = 0.0;
-   for(int i = 0; i < K*2; i++){
+   for(int i = 0; i < K*2; i= i+2){
       double value = y[i];
       if(value < 0){
          value = value * -1;
