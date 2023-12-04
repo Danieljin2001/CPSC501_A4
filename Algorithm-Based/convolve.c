@@ -334,11 +334,14 @@ int main(int argc, char* argv[])
     int M = IR_SIZE / sizeof(short); //h[m] length
 
     int largerLength; //size of X[] and H[]
+    int smallerLength;
 
     if (N>M){
         largerLength = N;
+        smallerLength = M;
     } else{
         largerLength = M;
+        smallerLength = N;
     }
    
     int K = next_power_of_2(2*largerLength);
@@ -349,23 +352,30 @@ int main(int argc, char* argv[])
 
 
     //setting real and imaginary numbers for the array
-    for (size_t i = 0; i < 2*N; i++) {
+    for (size_t i = 0; i < 2*largerLength; i++) {
         if(i % 2 == 0){
             x[i] = shortToDouble(INPUT_AUDIO_DATA[i/2]);
         } else {
             x[i] = 0.0;
         }
-    }
-
-    //setting real and imaginary numbers for the array
-    for (size_t i = 0; i < 2*M; i++) {
-        if(i % 2 == 0){
-            h[i] = shortToDouble(IR_AUDIO_DATA[i/2]);
-        } else {
-            h[i] = 0.0;
-
+        if ( i < 2*smallerLength){
+            if(i % 2 == 0){
+                h[i] = shortToDouble(IR_AUDIO_DATA[i/2]);
+            } else {
+                h[i] = 0.0;
+            }
         }
     }
+
+    // //setting real and imaginary numbers for the array
+    // for (size_t i = 0; i < 2*M; i++) {
+    //     if(i % 2 == 0){
+    //         h[i] = shortToDouble(IR_AUDIO_DATA[i/2]);
+    //     } else {
+    //         h[i] = 0.0;
+
+    //     }
+    // }
 
     //pad zeros
     pad_zeros_to(x, 2*N, K*2);
