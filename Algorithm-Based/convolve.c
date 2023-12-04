@@ -229,6 +229,7 @@ void convolution(double *x, int K, double *h, double *y) {
 
 //Function to write the convolved audio into an output .wav file. 
 void writeTone(double y[], int K){
+    int K2 = K*2;
    //create header for output file
    OUTPUT_HEADER.chunkId[0] = 'R';
    OUTPUT_HEADER.chunkId[1] = 'I';
@@ -236,7 +237,7 @@ void writeTone(double y[], int K){
    OUTPUT_HEADER.chunkId[3] = 'F';
  
 
-   OUTPUT_HEADER.chunkSize = 36 + K*sizeof(short); //36 + Subchunk2Size
+   OUTPUT_HEADER.chunkSize = 36 + K2; //36 + Subchunk2Size
    OUTPUT_HEADER.format[0] = 'W';
    OUTPUT_HEADER.format[1] = 'A';
    OUTPUT_HEADER.format[2] = 'V';
@@ -257,12 +258,12 @@ void writeTone(double y[], int K){
    fwrite(&OUTPUT_HEADER, sizeof(OUTPUT_HEADER), 1, fileStream);
 
    char subchunk2Id[4] = {'d','a','t','a'};
-   int subchunk2Size = K*sizeof(short); // an integer is 4 bytes
+   int subchunk2Size = K2; // an integer is 4 bytes
    fwrite(&subchunk2Id, sizeof(subchunk2Id), 1, fileStream);
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
    double largestNum = 0.0;
-   for(int i = 0; i < K*2; i= i+2){
+   for(int i = 0; i < K2; i= i+2){
       double value = y[i];
       if(value < 0){
          value = value * -1;
@@ -274,7 +275,7 @@ void writeTone(double y[], int K){
 
    double scaleTo = 32768.0 / largestNum;
    short data;
-   for (size_t i = 0; i < K*2; i=i+2) {
+   for (size_t i = 0; i < K2; i=i+2) {
          data = (short) (y[i] *  scaleTo);
          fwrite(&data, sizeof(data), 1, fileStream);
    }
@@ -319,9 +320,11 @@ int main(int argc, char* argv[])
     K |= K >> 16;
     K++;
     
-    double *x = (double *)calloc(K*2, sizeof(double));
-    double *h = (double *)calloc(K*2, sizeof(double));
-    double *y = (double *)calloc(K*2, sizeof(double));
+    int K2 = K*2;
+
+    double *x = (double *)calloc(K2, sizeof(double));
+    double *h = (double *)calloc(K2, sizeof(double));
+    double *y = (double *)calloc(K2, sizeof(double));
 
 
     //setting real and imaginary numbers for the array
@@ -342,8 +345,8 @@ int main(int argc, char* argv[])
 
 
     //pad zeros
-    pad_zeros_to(x, 2*N, K*2);
-    pad_zeros_to(h, 2*M, K*2);
+    pad_zeros_to(x, 2*N, K2);
+    pad_zeros_to(h, 2*M, K2);
    
     four1(x-1, K, 1);
  
