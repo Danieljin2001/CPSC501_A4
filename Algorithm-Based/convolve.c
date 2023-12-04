@@ -54,7 +54,7 @@ WavHeader OUTPUT_HEADER;
 bool file_exists(char *filename)
 {
     FILE *fp = fopen(filename, "r");
-    bool exist = false;
+    register bool exist = false;
     if (fp != NULL)
     {
         exist = true;
@@ -70,7 +70,7 @@ void checkArguments(int count, char* arg[]){
       printf("\nExample: a.exe inputfile.wav IRfile.wav outputfile.wav");
       exit(0);
    }
-   for (int i = 1; i < count; i++) {
+   for (register int i = 1; i < count; i++) {
       if (i == 1){
          INPUT_FILE_PATH = arg[i];
       } else if (i == 2) {
@@ -85,7 +85,7 @@ void checkArguments(int count, char* arg[]){
       }
 
       if(i == 3){
-         int length = strlen(arg[i]);
+         register int length = strlen(arg[i]);
          if(!(arg[i][length-1] == 'v' && arg[i][length-2] == 'a' && arg[i][length-3] == 'w' && arg[i][length-4] == '.')){
             printf("Output file %s must be in .wav format.", arg[i]);
             exit(0);
@@ -109,7 +109,7 @@ void readTone(int inputType) {
 
    
    if (header.subchunk1Size != 16){
-        int remainder = header.subchunk1Size -16;
+        register int remainder = header.subchunk1Size -16;
         char randomVar[remainder];
         fread(randomVar, remainder, 1, fileStream);
     }
@@ -120,8 +120,8 @@ void readTone(int inputType) {
    fread(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
    
-   int num_samples = subchunk2Size / (header.bitsPerSample / 8);
-   size_t data_size = subchunk2Size;
+   register int num_samples = subchunk2Size / (header.bitsPerSample / 8);
+   register size_t data_size = subchunk2Size;
 
    if(inputType == 0){
       INPUT_HEADER = header;
@@ -158,9 +158,9 @@ double shortToDouble(short value) {
 //  calling the routine (see main() below).
 void four1(double data[], int nn, int isign)
 {
-    unsigned long n, mmax, m, j, istep, i;
-    double wtemp, wr, wpr, wpi, wi, theta;
-    double tempr, tempi;
+    register unsigned long n, mmax, m, j, istep, i;
+    register double wtemp, wr, wpr, wpi, wi, theta;
+    register double tempr, tempi;
 
     n = nn << 1;
     j = 1;
@@ -211,15 +211,15 @@ void four1(double data[], int nn, int isign)
 
 // Function to pad zeros to the input array to make its length M
 void pad_zeros_to(double *arr, int current_length, int M) {
-    int padding = M - current_length;
-    for (int i = 0; i < padding; ++i) {
+    register int padding = M - current_length;
+    for (register int i = 0; i < padding; ++i) {
         arr[current_length + i] = 0.0;
     }
 }
 
 void convolution(double *x, int K, double *h, double *y) {
     // Perform the DFT
-    for (int k = 0, nn = 0; k < K; k++, nn += 2)
+    for (register int k = 0, nn = 0; k < K; k++, nn += 2)
     {
 	    y[nn] = ((x[nn] * h[nn]) - (x[nn+1] * h [nn+1]));
 	    y[nn+1] = ((x[nn] * h[nn+1]) + (x[nn+1] * h[nn]));
@@ -229,7 +229,7 @@ void convolution(double *x, int K, double *h, double *y) {
 
 //Function to write the convolved audio into an output .wav file. 
 void writeTone(double y[], int K){
-    int K2 = K*2;
+    register int K2 = K*2;
    //create header for output file
    OUTPUT_HEADER.chunkId[0] = 'R';
    OUTPUT_HEADER.chunkId[1] = 'I';
@@ -262,7 +262,7 @@ void writeTone(double y[], int K){
    fwrite(&subchunk2Id, sizeof(subchunk2Id), 1, fileStream);
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
-   double largestNum = 0.0;
+   register double largestNum = 0.0;
    for(int i = 0; i < K2; i= i+2){
       double value = y[i];
       if(value < 0){
@@ -273,7 +273,7 @@ void writeTone(double y[], int K){
       }
    }
 
-   double scaleTo = 32768.0 / largestNum;
+   register double scaleTo = 32768.0 / largestNum;
    short data;
    for (size_t i = 0; i < K2; i=i+2) {
          data = (short) (y[i] *  scaleTo);
@@ -295,11 +295,11 @@ int main(int argc, char* argv[])
     readTone(0); //read input file
     readTone(1); //read IR file
 
-    int N = INPUT_SIZE / sizeof(short); //x[n] length
-    int M = IR_SIZE / sizeof(short); //h[m] length
+    register int N = INPUT_SIZE / sizeof(short); //x[n] length
+    register int M = IR_SIZE / sizeof(short); //h[m] length
 
-    int largerLength; //size of X[] and H[]
-    int smallerLength;
+    register int largerLength; //size of X[] and H[]
+    register int smallerLength;
 
     if (N>M){
         largerLength = N;
@@ -310,7 +310,7 @@ int main(int argc, char* argv[])
     }
    
 
-    int K = 2*largerLength; // compute the next highest power of 2 of 32-bit K
+    register int K = 2*largerLength; // compute the next highest power of 2 of 32-bit K
     //from: https://stackoverflow.com/questions/466204/rounding-up-to-next-power-of-2
     K--;
     K |= K >> 1;
@@ -320,7 +320,7 @@ int main(int argc, char* argv[])
     K |= K >> 16;
     K++;
     
-    int K2 = K*2;
+    register int K2 = K*2;
 
     double *x = (double *)calloc(K2, sizeof(double));
     double *h = (double *)calloc(K2, sizeof(double));
@@ -359,7 +359,7 @@ int main(int argc, char* argv[])
     writeTone(y, N+M-1);
 
     time = clock() - time; //end timer
-    double timeTaken = ((double)time)/CLOCKS_PER_SEC;
+    register double timeTaken = ((double)time)/CLOCKS_PER_SEC;
     printf("\nThis application using FFT took %f seconds to execute \n", timeTaken); 
 
 
