@@ -3,9 +3,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-//Baseline
-//inspo from D2L: CPSC 501 L01 > Table of Contents > Tutorials > Ali - T06/T07 > Week 10 > Week 10 - Session 2 - Updated
+#include <math.h>
 
+#define SWAP(a,b)  tempr=(a);(a)=(b);(b)=tempr
+
+
+//Algorithm-based
+//inspo from D2L: CPSC 501 L01 > Table of Contents > Tutorials > Kimiya - T03/T04 > CPSC501_F23_FFT_convolution_overlap-add
 
 //Struct for Wav headers (used to store wav haeader data)
 //to hold all data up until the end of subchunk1
@@ -90,7 +94,6 @@ void checkArguments(int count, char* arg[]){
    }
 }
 
-
 //Function to read the .wav file header and its audio data. inputType = 0 to read sample audio, anything else to read impulse response audio
 void readTone(int inputType) {
    FILE * fileStream;
@@ -116,9 +119,10 @@ void readTone(int inputType) {
    // printf("block align: %d\n", header.blockAlign);
    // printf("bits per sample: %d\n", header.bitsPerSample);
    
-      // the remaining bytes in subchunk1 will be null bytes if there is more than 16
-      // so read the junk!
    if (header.subchunk1Size != 16){
+        // the remaining bytes in subchunk1 will be null bytes if there is more than 16
+        // so read the junk!
+      //   printf("subchunk1 is too big! Skipping some bytes!\n");
         int remainder = header.subchunk1Size -16;
         char randomVar[remainder];
         fread(randomVar, remainder, 1, fileStream);
@@ -132,6 +136,7 @@ void readTone(int inputType) {
    
    int num_samples = subchunk2Size / (header.bitsPerSample / 8);
    size_t data_size = subchunk2Size;
+   //size_t data_size = num_samples;
 
    //  printf("subchunk2 size: %d\n", subchunk2Size);
    //  printf("number of samples: %d\n", num_samples);
@@ -151,55 +156,107 @@ void readTone(int inputType) {
    }
    
 
-   // Close the file
+   // Close the files
    fclose(fileStream);
 }
 
 // Function to convert a short to one float in the range -1 to 1
-float shortToFloat(short value) {
-    return value / 32768.0f;
+double shortToDouble(short value) {
+    return value / 32768.0;
 }
 
-/*
-    The function convolve takes six arguments: 
-        Two input arrays x[] and h[], their respective sizes N and M, and an output array y[] with size P.
-
-    The first loop initializes the output array y[] to zero. 
-        This is necessary because the convolution operation involves accumulating values in y[].
-
-    The second loop (outer loop) iterates over each element of the input array x[].
-
-    The third loop (inner loop) iterates over each element of the array h[]. 
-        For each pair of elements x[n] and h[m], it adds their sum to the corresponding element in y[].
-*/
-void convolve(float x[], int N, float h[], int M, float y[], int P)
+//  The four1 FFT from Numerical Recipes in C,
+//  p. 507 - 508.
+//  Note:  changed float data types to double.
+//  nn must be a power of 2, and use +1 for
+//  isign for an FFT, and -1 for the Inverse FFT.
+//  The data is complex, so the array size must be
+//  nn*2. This code assumes the array starts
+//  at index 1, not 0, so subtract 1 when
+//  calling the routine (see main() below).
+void four1(double data[], int nn, int isign)
 {
-    int n,m;
+    unsigned long n, mmax, m, j, istep, i;
+    double wtemp, wr, wpr, wpi, wi, theta;
+    double tempr, tempi;
 
-    /* Clear Output Buffer y[] */
-    for (n=0; n < P; n++)
+    n = nn << 1;
+    j = 1;
+
+    for (i = 1; i < n; i += 2) {
+	if (j > i) {
+	    SWAP(data[j], data[i]);
+	    SWAP(data[j+1], data[i+1]);
+	}
+	m = nn;
+	while (m >= 2 && j > m) {
+	    j -= m;
+	    m >>= 1;
+	}
+	j += m;
+    }
+
+    mmax = 2;
+    while (n > mmax) {
+	istep = mmax << 1;
+	theta = isign * (6.28318530717959 / mmax);
+	wtemp = sin(0.5 * theta);
+	wpr = -2.0 * wtemp * wtemp;
+	wpi = sin(theta);
+	wr = 1.0;
+	wi = 0.0;
+	for (m = 1; m < mmax; m += 2) {
+	    for (i = m; i <= n; i += istep) {
+		j = i + mmax;
+		tempr = wr * data[j] - wi * data[j+1];
+		tempi = wr * data[j+1] + wi * data[j];
+		data[j] = data[i] - tempr;
+		data[j+1] = data[i+1] - tempi;
+		data[i] += tempr;
+		data[i+1] += tempi;
+	    }
+	    wr = (wtemp = wr) * wpr - wi * wpi + wr;
+	    wi = wi * wpr + wtemp * wpi + wi;
+	}
+	mmax = istep;
+    }
+    
+}
+
+
+// Function to find the next power of 2 greater than or equal to n
+int next_power_of_2(int n) {
+    return pow(2, (int)(log2(n - 1) + 1));
+}
+
+// Function to pad zeros to the input array to make its length M
+void pad_zeros_to(double *arr, int current_length, int M) {
+    int padding = M - current_length;
+    for (int i = 0; i < padding; ++i) {
+        arr[current_length + i] = 0.0;
+    }
+}
+
+void convolution(double *x, int K, double *h, double *y) {
+    // Perform the DFT
+    for (int k = 0, nn = 0; k < K; k++, nn += 2)
     {
-        y[n] = 0.0;
-    }
-
-    /* Outer Loop: process each input value x[n] in turn */
-    for (n=0; n<N; n++){
-        /* Inner loop: process x[n] with each sample of h[n] */
-        for (m=0; m<M; m++){
-            y[n+m] += x[n] * h[m];
-        }
-    }
+	    y[nn] = ((x[nn] * h[nn]) - (x[nn+1] * h [nn+1]));
+	    y[nn+1] = ((x[nn] * h[nn+1]) + (x[nn+1] * h[nn]));
+	}
+    
 }
 
 //Function to write the convolved audio into an output .wav file. 
-void writeTone(float y[], int P){
+void writeTone(double y[], int K){
    //create header for output file
    OUTPUT_HEADER.chunkId[0] = 'R';
    OUTPUT_HEADER.chunkId[1] = 'I';
    OUTPUT_HEADER.chunkId[2] = 'F';
    OUTPUT_HEADER.chunkId[3] = 'F';
+ 
 
-   OUTPUT_HEADER.chunkSize = 36 + P*sizeof(short); //36 + Subchunk2Size
+   OUTPUT_HEADER.chunkSize = 36 + K*sizeof(short); //36 + Subchunk2Size
    OUTPUT_HEADER.format[0] = 'W';
    OUTPUT_HEADER.format[1] = 'A';
    OUTPUT_HEADER.format[2] = 'V';
@@ -233,16 +290,16 @@ void writeTone(float y[], int P){
    // printf("bits per sample: %d\n", OUTPUT_HEADER.bitsPerSample);
 
    char subchunk2Id[4] = {'d','a','t','a'};
-   int subchunk2Size = P*sizeof(short); // an integer is 4 bytes
+   int subchunk2Size = K*sizeof(short); // an integer is 4 bytes
    fwrite(&subchunk2Id, sizeof(subchunk2Id), 1, fileStream);
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
    // printf("subchunk2Id: %s\n", subchunk2Id);
    // printf("subchunk2Size: %d\n", subchunk2Size);
 
-   float largestNum = 0.0f;
-   for(int i = 0; i < P; i++){
-      float value = y[i];
+   double largestNum = 0.0;
+   for(int i = 0; i < K*2; i++){
+      double value = y[i];
       if(value < 0){
          value = value * -1;
       }
@@ -251,59 +308,83 @@ void writeTone(float y[], int P){
       }
    }
 
-   float scaleTo = 32768.0f / largestNum;
-
-
+   double scaleTo = 32768.0 / largestNum;
    short data;
-   for (int i = 0; i < P; i++){
-      data = (short) (y[i] *  scaleTo);
-      fwrite(&data, sizeof(data), 1, fileStream);
+   for (size_t i = 0; i < K*2; i=i+2) {
+         data = (short) (y[i] *  scaleTo);
+         fwrite(&data, sizeof(data), 1, fileStream);
    }
 
+
    fclose(fileStream);
-   printf("\nFinished creating %s\n", OUTPUT_FILE_PATH);
-
-
-
+   printf("Finished creating %s", OUTPUT_FILE_PATH);
 
 }
 
 int main(int argc, char* argv[])
 {
-   clock_t time;
-   time = clock();
+    clock_t time;
+    time = clock(); //start timer
 
-   checkArguments(argc, argv);
-   readTone(0); //read input file
-   readTone(1); //read IR file
+    checkArguments(argc, argv);
+    readTone(0); //read input file
+    readTone(1); //read IR file
 
-   //get array lengths
-   int N = INPUT_SIZE / sizeof(short);
-   int M = IR_SIZE / sizeof(short);
-   int P = N+M-1;
+    int N = INPUT_SIZE / sizeof(short); //x[n] length
+    int M = IR_SIZE / sizeof(short); //h[m] length
 
-   //create float arrays
-   float* x = malloc(N * sizeof(float));
-   float* h = malloc(M * sizeof(float));
-   float* y = malloc(P * sizeof(float));
+    int largerLength; //size of X[] and H[]
+
+    if (N>M){
+        largerLength = N;
+    } else{
+        largerLength = M;
+    }
    
-   //setting up float array for input file
-   for (size_t i = 0; i < N; i++) {
-      x[i] = shortToFloat(INPUT_AUDIO_DATA[i]);
-   }
+    int K = next_power_of_2(2*largerLength);
+    
+    double *x = (double *)calloc(K*2, sizeof(double));
+    double *h = (double *)calloc(K*2, sizeof(double));
+    double *y = (double *)calloc(K*2, sizeof(double));
 
-   for (size_t i = 0; i < M; i++) {
-      h[i] = shortToFloat(IR_AUDIO_DATA[i]);
-   }
 
-   convolve(x, N, h, M, y, P);
+    //setting real and imaginary numbers for the array
+    for (size_t i = 0; i < 2*N; i++) {
+        if(i % 2 == 0){
+            x[i] = shortToDouble(INPUT_AUDIO_DATA[i/2]);
+        } else {
+            x[i] = 0.0;
+        }
+    }
+
+    //setting real and imaginary numbers for the array
+    for (size_t i = 0; i < 2*M; i++) {
+        if(i % 2 == 0){
+            h[i] = shortToDouble(IR_AUDIO_DATA[i/2]);
+        } else {
+            h[i] = 0.0;
+
+        }
+    }
+
+    //pad zeros
+    pad_zeros_to(x, 2*N, K*2);
+    pad_zeros_to(h, 2*M, K*2);
    
+    four1(x-1, K, 1);
+ 
+    four1(h-1, K, 1);
 
-   writeTone(y, P);
+    convolution(x, K, h, y); //complex multiplication
 
-   time = clock() - time;
-   double timeTaken = ((double)time)/CLOCKS_PER_SEC;
-   printf("\nThis application using time domain convolution took %f seconds to execute \n", timeTaken); 
-   return 0;
+    four1(y-1, K, -1);
 
+    writeTone(y, N+M-1);
+
+    time = clock() - time; //end timer
+    double timeTaken = ((double)time)/CLOCKS_PER_SEC;
+    printf("\nThis application using FFT took %f seconds to execute \n", timeTaken); 
+
+
+    return 0;
 }
