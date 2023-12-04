@@ -107,22 +107,8 @@ void readTone(int inputType) {
 
    fread(&header, sizeof(header), 1 , fileStream);
 
-   // printf("\n\n\nchunk id: %s\n", header.chunkId);
-   // printf("chunk size: %d\n", header.chunkSize);
-   // printf("format: %s\n", header.format);
-   // printf("subchunk1 id: %s\n", header.subchunk1Id);
-   // printf("subchunk1 size: %d\n", header.subchunk1Size);
-   // printf("audio format: %d\n", header.audioFormat);
-   // printf("number of channels: %d\n", header.numChannels);
-   // printf("sample rate: %d\n", header.sampleRate);
-   // printf("byte rate: %d\n", header.byteRate);
-   // printf("block align: %d\n", header.blockAlign);
-   // printf("bits per sample: %d\n", header.bitsPerSample);
    
    if (header.subchunk1Size != 16){
-        // the remaining bytes in subchunk1 will be null bytes if there is more than 16
-        // so read the junk!
-      //   printf("subchunk1 is too big! Skipping some bytes!\n");
         int remainder = header.subchunk1Size -16;
         char randomVar[remainder];
         fread(randomVar, remainder, 1, fileStream);
@@ -136,10 +122,6 @@ void readTone(int inputType) {
    
    int num_samples = subchunk2Size / (header.bitsPerSample / 8);
    size_t data_size = subchunk2Size;
-   //size_t data_size = num_samples;
-
-   //  printf("subchunk2 size: %d\n", subchunk2Size);
-   //  printf("number of samples: %d\n", num_samples);
 
    if(inputType == 0){
       INPUT_HEADER = header;
@@ -224,10 +206,8 @@ void four1(double data[], int nn, int isign)
 }
 
 
-// Function to find the next power of 2 greater than or equal to n
-int next_power_of_2(int n) {
-    return pow(2, (int)(log2(n - 1) + 1));
-}
+
+
 
 // Function to pad zeros to the input array to make its length M
 void pad_zeros_to(double *arr, int current_length, int M) {
@@ -276,26 +256,10 @@ void writeTone(double y[], int K){
    FILE* fileStream = fopen(OUTPUT_FILE_PATH, "wb");
    fwrite(&OUTPUT_HEADER, sizeof(OUTPUT_HEADER), 1, fileStream);
 
-   // printf("OUTEER HEADER STUFF---------------------------------------");
-   // printf("\n\n\nchunk id: %s\n", OUTPUT_HEADER.chunkId);
-   // printf("chunk size: %d\n", OUTPUT_HEADER.chunkSize);
-   // printf("format: %s\n", OUTPUT_HEADER.format);
-   // printf("subchunk1 id: %s\n", OUTPUT_HEADER.subchunk1Id);
-   // printf("subchunk1 size: %d\n", OUTPUT_HEADER.subchunk1Size);
-   // printf("audio format: %d\n", OUTPUT_HEADER.audioFormat);
-   // printf("number of channels: %d\n", OUTPUT_HEADER.numChannels);
-   // printf("sample rate: %d\n", OUTPUT_HEADER.sampleRate);
-   // printf("byte rate: %d\n", OUTPUT_HEADER.byteRate);
-   // printf("block align: %d\n", OUTPUT_HEADER.blockAlign);
-   // printf("bits per sample: %d\n", OUTPUT_HEADER.bitsPerSample);
-
    char subchunk2Id[4] = {'d','a','t','a'};
    int subchunk2Size = K*sizeof(short); // an integer is 4 bytes
    fwrite(&subchunk2Id, sizeof(subchunk2Id), 1, fileStream);
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
-
-   // printf("subchunk2Id: %s\n", subchunk2Id);
-   // printf("subchunk2Size: %d\n", subchunk2Size);
 
    double largestNum = 0.0;
    for(int i = 0; i < K*2; i++){
@@ -344,7 +308,16 @@ int main(int argc, char* argv[])
         smallerLength = N;
     }
    
-    int K = next_power_of_2(2*largerLength);
+
+    int K = 2*largerLength; // compute the next highest power of 2 of 32-bit K
+    //from: https://stackoverflow.com/questions/466204/rounding-up-to-next-power-of-2
+    K--;
+    K |= K >> 1;
+    K |= K >> 2;
+    K |= K >> 4;
+    K |= K >> 8;
+    K |= K >> 16;
+    K++;
     
     double *x = (double *)calloc(K*2, sizeof(double));
     double *h = (double *)calloc(K*2, sizeof(double));
@@ -367,15 +340,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    // //setting real and imaginary numbers for the array
-    // for (size_t i = 0; i < 2*M; i++) {
-    //     if(i % 2 == 0){
-    //         h[i] = shortToDouble(IR_AUDIO_DATA[i/2]);
-    //     } else {
-    //         h[i] = 0.0;
-
-    //     }
-    // }
 
     //pad zeros
     pad_zeros_to(x, 2*N, K*2);
