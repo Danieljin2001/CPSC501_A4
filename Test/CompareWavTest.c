@@ -1,3 +1,8 @@
+/*
+- test checks if headers and audio is the same between two files
+- when checking audio data theres a margin of error allowed (delta=1)
+*/
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

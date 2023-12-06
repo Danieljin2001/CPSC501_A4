@@ -104,20 +104,8 @@ void readTone(int inputType) {
 
    fread(&header, sizeof(header), 1 , fileStream);
 
-   // printf("\n\n\nchunk id: %s\n", header.chunkId);
-   // printf("chunk size: %d\n", header.chunkSize);
-   // printf("format: %s\n", header.format);
-   // printf("subchunk1 id: %s\n", header.subchunk1Id);
-   // printf("subchunk1 size: %d\n", header.subchunk1Size);
-   // printf("audio format: %d\n", header.audioFormat);
-   // printf("number of channels: %d\n", header.numChannels);
-   // printf("sample rate: %d\n", header.sampleRate);
-   // printf("byte rate: %d\n", header.byteRate);
-   // printf("block align: %d\n", header.blockAlign);
-   // printf("bits per sample: %d\n", header.bitsPerSample);
-   
-      // the remaining bytes in subchunk1 will be null bytes if there is more than 16
-      // so read the junk!
+   // the remaining bytes in subchunk1 will be null bytes if there is more than 16
+   // so read the junk!
    if (header.subchunk1Size != 16){
         int remainder = header.subchunk1Size -16;
         char randomVar[remainder];
@@ -133,8 +121,6 @@ void readTone(int inputType) {
    int num_samples = subchunk2Size / (header.bitsPerSample / 8);
    size_t data_size = subchunk2Size;
 
-   //  printf("subchunk2 size: %d\n", subchunk2Size);
-   //  printf("number of samples: %d\n", num_samples);
 
    if(inputType == 0){
       INPUT_HEADER = header;
@@ -219,26 +205,11 @@ void writeTone(float y[], int P){
    FILE* fileStream = fopen(OUTPUT_FILE_PATH, "wb");
    fwrite(&OUTPUT_HEADER, sizeof(OUTPUT_HEADER), 1, fileStream);
 
-   // printf("OUTEER HEADER STUFF---------------------------------------");
-   // printf("\n\n\nchunk id: %s\n", OUTPUT_HEADER.chunkId);
-   // printf("chunk size: %d\n", OUTPUT_HEADER.chunkSize);
-   // printf("format: %s\n", OUTPUT_HEADER.format);
-   // printf("subchunk1 id: %s\n", OUTPUT_HEADER.subchunk1Id);
-   // printf("subchunk1 size: %d\n", OUTPUT_HEADER.subchunk1Size);
-   // printf("audio format: %d\n", OUTPUT_HEADER.audioFormat);
-   // printf("number of channels: %d\n", OUTPUT_HEADER.numChannels);
-   // printf("sample rate: %d\n", OUTPUT_HEADER.sampleRate);
-   // printf("byte rate: %d\n", OUTPUT_HEADER.byteRate);
-   // printf("block align: %d\n", OUTPUT_HEADER.blockAlign);
-   // printf("bits per sample: %d\n", OUTPUT_HEADER.bitsPerSample);
-
    char subchunk2Id[4] = {'d','a','t','a'};
    int subchunk2Size = P*sizeof(short); // an integer is 4 bytes
    fwrite(&subchunk2Id, sizeof(subchunk2Id), 1, fileStream);
    fwrite(&subchunk2Size, sizeof(subchunk2Size), 1, fileStream);
 
-   // printf("subchunk2Id: %s\n", subchunk2Id);
-   // printf("subchunk2Size: %d\n", subchunk2Size);
 
    float largestNum = 0.0f;
    for(int i = 0; i < P; i++){
