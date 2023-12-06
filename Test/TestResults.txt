@@ -1,0 +1,8 @@
+File One: ..\Algorithm-Based\outputBASELINE.wav
+File Two: ..\Baseline\outputBASELINE1.wav
+Delta for error: 1
+--------------------------------------------STARTING TEST--------------------------------------------
+--------------------------------------------FINISHED TEST--------------------------------------------
+Header errors: 0
+Subheader errors: 0
+Data errors: 0
